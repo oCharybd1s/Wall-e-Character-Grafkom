@@ -194,13 +194,17 @@ var ENGINE = {
       for (var i = 0; i < o.children.length; i++) draw(o.children[i], M);
     };
 
+    var hooks = [], t_prev = 0;
     var animate = function(time) {
       var t = time / 1000;
+      var dt = Math.min(0.05, t - t_prev);
+      t_prev = t;
       if (!drag) {
         dX *= AMORTIZATION, dY *= AMORTIZATION;
         THETA += dX, PHI += dY;
       }
       for (var i = 0; i < actors.length; i++) actors[i].update(t);
+      for (var i = 0; i < hooks.length; i++) hooks[i](t, dt);
 
       var VIEWMATRIX = LIBS.chain(LIBS.translate(0, 0, -DIST), LIBS.rotX(PHI), LIBS.rotY(THETA),
                                   LIBS.translate(0, -(view.targetY || 0), 0));
@@ -229,7 +233,12 @@ var ENGINE = {
         holder.add(c.root);
         root.add(holder);
         actors.push(c);
+        c.holder = holder;
         return c;
+      },
+      // fungsi tambahan yang dijalankan setiap frame: fn(t, dt)
+      onFrame: function(fn) {
+        hooks.push(fn);
       },
       start: function() {
         window.requestAnimationFrame(animate);
