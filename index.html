@@ -2,23 +2,125 @@
 <html>
   <head>
     <meta charset='utf-8'/>
-    <title>Environment</title>
+    <title>WALL-E Grafkom 2026</title>
     <script src="common/libs.js"></script>
     <script src="common/engine.js"></script>
     <script src="VN-GO/vngo.js"></script>
     <script src="PR-T/prt.js"></script>
+    <script src="L-T/lt.js"></script>
     <script>
       window.addEventListener('load', function() {
-        var E = ENGINE.create('your_canvas', { dist: 11, targetY: 1.2, theta: 0, phi: 0.3 });
+        var E = ENGINE.create('your_canvas', { dist: 14, targetY: 1.4, theta: 0, phi: 0.22 });
+        var GL = E.GL;
 
-        // Part: Lantai (circle)
-        var floor = new E.Obj(E.buffers(QUADRIC.circle(7)), [0.24, 0.25, 0.28]);
-        floor.position = [0, -0.005, 0];
+        var hex = function(h) { return [((h >> 16) & 255) / 255, ((h >> 8) & 255) / 255, (h & 255) / 255]; };
+        var seed = 42;
+        var rand = function() { return (seed = (seed * 16807) % 2147483647) / 2147483647; };
+        var pick = function(a) { return a[Math.floor(rand() * a.length)]; };
+
+        var DIRT = [0.52, 0.42, 0.30];          // tanah gurun kusam (lebih hangat)
+        var TRASH = [hex(0x6b5b45), hex(0x7a6a52), hex(0x8a7a5e), hex(0x5e5648),
+                     hex(0x9b8a6a), hex(0x4e4a40), hex(0x86755a), hex(0xa09274)];
+        var RUST = [hex(0x8e4a2a), hex(0x9a5a30), hex(0x6e3d22)];
+        var DULL = [hex(0x9aa0a8), hex(0x7d838c), hex(0xb3aa96)];
+        var SPHERE = E.geo.sphere();
+        var CYL = E.geo.cyl('y');
+
+        // ---------- KUBAH LANGIT gradasi (ikut kamera saat diputar) ----------
+        var sky = new E.Obj(E.buffers(QUADRIC.ellipsoid(1, 1, 1)), [0.86, 0.64, 0.42]);
+        sky.color2 = [0.44, 0.36, 0.28];   // bawah: cokelat debu, atas: oranye pudar
+        sky.scale = [60, 60, 60];
+        sky.geo = E.buffers(QUADRIC.ellipsoid(1, 1, 1, 0, Math.PI / 2)); // kubah atas saja
+        E.root.add(sky);
+
+        function junk(p, geo, color, pos, scale, rot) {
+          var m = new E.Obj(geo, color);
+          m.position = pos;
+          m.scale = scale;
+          if (rot) m.rotation = rot;
+          p.add(m);
+          return m;
+        }
+
+        // ---------- TANAH: lingkaran gurun luas sampai horizon ----------
+        var floor = new E.Obj(E.buffers(QUADRIC.circle(60)), DIRT);
+        floor.color2 = [0.60, 0.50, 0.36];
+        floor.position = [0, -0.01, 0];
         E.root.add(floor);
+        for (var i = 0; i < 10; i++) {
+          var patch = new E.Obj(E.buffers(QUADRIC.circle(1)), pick(TRASH));
+          var a = rand() * Math.PI * 2, r = 3 + rand() * 11;
+          patch.position = [r * Math.sin(a), 0.002, r * Math.cos(a)];
+          patch.scale = [1 + rand() * 3, 1, 1 + rand() * 3];
+          E.root.add(patch);
+        }
+
+        // ---------- GUNUNGAN SAMPAH di sekeliling ----------
+        for (var m = 0; m < 7; m++) {
+          var ang = m * Math.PI * 2 / 7 + rand() * 0.4;
+          var dist = 9 + rand() * 4;
+          var px = dist * Math.sin(ang), pz = dist * Math.cos(ang);
+          var pile = new E.Obj();
+          pile.position = [px, 0, pz];
+          E.root.add(pile);
+          var baseR = 1.8 + rand() * 1.6;
+          // kerucut terpotong sebagai badan gunungan
+          junk(pile, E.buffers(QUADRIC.frustum(1, 1, 20)), pick(TRASH), [0, baseR * 0.55, 0], [baseR, baseR * 1.1, baseR]);
+          // puncak membulat
+          junk(pile, SPHERE, pick(TRASH), [0, baseR * 1.1, 0], [baseR * 0.75, baseR * 0.5, baseR * 0.75]);
+          // sampah menonjol dari gunungan
+          for (var k = 0; k < 14; k++) {
+            var aa = rand() * Math.PI * 2, hh = rand() * baseR * 1.2;
+            var rr = baseR * (1 - hh / (baseR * 2.2));
+            var kind = rand();
+            var g = kind < 0.4 ? CYL : SPHERE;
+            var col = kind < 0.55 ? pick(TRASH) : (kind < 0.8 ? pick(RUST) : pick(DULL));
+            junk(pile, g, col,
+                 [rr * Math.sin(aa), hh, rr * Math.cos(aa)],
+                 [0.1 + rand() * 0.35, 0.1 + rand() * 0.6, 0.1 + rand() * 0.35],
+                 [rand() * 1.5, rand() * 6, rand() * 1.5]);
+          }
+        }
+
+        // ---------- SAMPAH LEPAS di area tengah ----------
+        for (var i = 0; i < 45; i++) {
+          var a = rand() * Math.PI * 2, r = 1.5 + rand() * 7;
+          var kind = rand();
+          var col = kind < 0.5 ? pick(TRASH) : (kind < 0.75 ? pick(RUST) : pick(DULL));
+          if (rand() < 0.5) {
+            // balok/kubus sampah (silinder skala)
+            var w = 0.12 + rand() * 0.3;
+            junk(E.root, CYL, col, [r * Math.sin(a), w * 0.4, r * Math.cos(a)],
+                 [w * 0.7, w, w * 0.7], [rand() * 0.4, rand() * 6, rand() * 0.4]);
+          } else if (kind < 0.75) {
+            // botol / kaleng berdiri atau miring
+            junk(E.root, CYL, col, [r * Math.sin(a), 0.12, r * Math.cos(a)],
+                 [0.06 + rand() * 0.05, 0.24, 0.06 + rand() * 0.05],
+                 [rand() * 1.8, rand() * 6, rand() * 1.8]);
+          } else {
+            // bola kusam / ban tua
+            var rr2 = 0.08 + rand() * 0.18;
+            junk(E.root, SPHERE, col, [r * Math.sin(a), rr2 * 0.7, r * Math.cos(a)],
+                 [rr2, rr2 * 0.6, rr2], [0, rand() * 6, 0]);
+          }
+        }
+
+        // ---------- GEDUNG RERUNTUHAN di kejauhan ----------
+        for (var b = 0; b < 8; b++) {
+          var a = b * Math.PI * 2 / 8 + 0.3;
+          var dist = 14 + rand() * 4;
+          var w = 0.8 + rand() * 1.4, h = 2 + rand() * 4;
+          junk(E.root, CYL, [0.48, 0.44, 0.38], [dist * Math.sin(a), h / 2, dist * Math.cos(a)],
+               [w * 0.75, h, w * 0.75]).color2 = [0.62, 0.53, 0.42];
+          // tunggul atas tak rata
+          junk(E.root, SPHERE, [0.44, 0.40, 0.35], [dist * Math.sin(a), h, dist * Math.cos(a)],
+               [w * 0.6, 0.3 + rand() * 0.4, w * 0.6]);
+        }
 
         // Part: Karakter (posisi x, y, z & arah hadap)
         E.spawn(CHARACTERS.VNGO, [-3.2, 0, 0], 0.5);
         E.spawn(CHARACTERS.PRT, [3.2, 1.45, 0.3], -0.4);
+        E.spawn(CHARACTERS.LT, [0, 0, 2.8], 2.6);
 
         E.start();
       });
