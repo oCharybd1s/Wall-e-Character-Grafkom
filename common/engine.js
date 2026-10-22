@@ -16,7 +16,8 @@ var ENGINE = {
     var drag = false;
     var x_prev, y_prev;
     var dX = 0, dY = 0;
-    var THETA = view.theta || 0, PHI = view.phi || 0.15, DIST = view.dist || 10;
+    // kamera orbit: sudut theta/phi, jarak, dan titik target yang dilihat
+    var CAM = { theta: view.theta || 0, phi: view.phi || 0.15, dist: view.dist || 10, target: [0, view.targetY || 0, 0] };
 
     CANVAS.addEventListener("mousedown", function(e) {
       drag = true;
@@ -30,13 +31,13 @@ var ENGINE = {
       if (!drag) return false;
       dX = (e.pageX - x_prev) * Math.PI / CANVAS.width,
         dY = (e.pageY - y_prev) * Math.PI / CANVAS.height;
-      THETA += dX;
-      PHI += dY;
+      CAM.theta += dX;
+      CAM.phi += dY;
       x_prev = e.pageX, y_prev = e.pageY;
       e.preventDefault();
     }, false);
     CANVAS.addEventListener("wheel", function(e) {
-      DIST *= e.deltaY > 0 ? 1.08 : 1 / 1.08;
+      CAM.dist *= e.deltaY > 0 ? 1.08 : 1 / 1.08;
       e.preventDefault();
     }, { passive: false });
 
@@ -201,13 +202,13 @@ var ENGINE = {
       t_prev = t;
       if (!drag) {
         dX *= AMORTIZATION, dY *= AMORTIZATION;
-        THETA += dX, PHI += dY;
+        CAM.theta += dX, CAM.phi += dY;
       }
       for (var i = 0; i < actors.length; i++) actors[i].update(t);
       for (var i = 0; i < hooks.length; i++) hooks[i](t, dt);
 
-      var VIEWMATRIX = LIBS.chain(LIBS.translate(0, 0, -DIST), LIBS.rotX(PHI), LIBS.rotY(THETA),
-                                  LIBS.translate(0, -(view.targetY || 0), 0));
+      var VIEWMATRIX = LIBS.chain(LIBS.translate(0, 0, -CAM.dist), LIBS.rotX(CAM.phi), LIBS.rotY(CAM.theta),
+                                  LIBS.translate(-CAM.target[0], -CAM.target[1], -CAM.target[2]));
       GL.viewport(0, 0, CANVAS.width, CANVAS.height);
       GL.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
       GL.uniformMatrix4fv(_Pmatrix, false, PROJMATRIX);
@@ -224,6 +225,7 @@ var ENGINE = {
       buffers: buffers,
       geo: geo,
       root: root,
+      camera: CAM,
       // pasang karakter ke environment pada posisi & arah tertentu
       spawn: function(make, position, rotationY) {
         var c = make(this);
