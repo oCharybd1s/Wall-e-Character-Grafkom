@@ -1,0 +1,21 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'/>
+    <title>PR-T</title>
+    <script src="../common/libs.js"></script>
+    <script src="../common/engine.js"></script>
+    <script src="prt.js"></script>
+    <script>
+      window.addEventListener('load', function() {
+        var E = ENGINE.create('your_canvas', { dist: 5.5, targetY: 0.3, phi: 0.15 });
+        E.spawn(CHARACTERS.PRT);
+        E.start();
+      });
+    </script>
+  </head>
+  <body style='margin: 0; overflow: hidden'>
+    <canvas id='your_canvas'
+            style='position: absolute; background-color: black;'></canvas>
+  </body>
+</html>

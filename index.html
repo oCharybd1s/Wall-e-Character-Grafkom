@@ -1,0 +1,31 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'/>
+    <title>Environment</title>
+    <script src="common/libs.js"></script>
+    <script src="common/engine.js"></script>
+    <script src="VN-GO/vngo.js"></script>
+    <script src="PR-T/prt.js"></script>
+    <script>
+      window.addEventListener('load', function() {
+        var E = ENGINE.create('your_canvas', { dist: 11, targetY: 1.2, theta: 0, phi: 0.3 });
+
+        // Part: Lantai (circle)
+        var floor = new E.Obj(E.buffers(QUADRIC.circle(7)), [0.24, 0.25, 0.28]);
+        floor.position = [0, -0.005, 0];
+        E.root.add(floor);
+
+        // Part: Karakter (posisi x, y, z & arah hadap)
+        E.spawn(CHARACTERS.VNGO, [-3.2, 0, 0], 0.5);
+        E.spawn(CHARACTERS.PRT, [3.2, 1.45, 0.3], -0.4);
+
+        E.start();
+      });
+    </script>
+  </head>
+  <body style='margin: 0; overflow: hidden'>
+    <canvas id='your_canvas'
+            style='position: absolute; background-color: black;'></canvas>
+  </body>
+</html>

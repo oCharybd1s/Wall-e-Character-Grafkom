@@ -1,0 +1,21 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'/>
+    <title>VN-GO</title>
+    <script src="../common/libs.js"></script>
+    <script src="../common/engine.js"></script>
+    <script src="vngo.js"></script>
+    <script>
+      window.addEventListener('load', function() {
+        var E = ENGINE.create('your_canvas', { dist: 6.5, targetY: 1.6, theta: -0.8, phi: 0.25 });
+        E.spawn(CHARACTERS.VNGO);
+        E.start();
+      });
+    </script>
+  </head>
+  <body style='margin: 0; overflow: hidden'>
+    <canvas id='your_canvas'
+            style='position: absolute; background-color: black;'></canvas>
+  </body>
+</html>
