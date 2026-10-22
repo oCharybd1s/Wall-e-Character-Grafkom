@@ -18,7 +18,7 @@ CHARACTERS.PRT = function(E) {
   var DARKRED = [0.50, 0.06, 0.08];
   var YELLOW = [0.95, 0.88, 0.10];
 
-  var CYLINDER = E.buffers(QUADRIC.cylinder(1, 1));
+  var CYLINDER = E.geo.cyl('y');
   var SPHERE = E.geo.sphere();
   var CIRCLE = E.buffers(QUADRIC.circle(1));
   var CONE = E.buffers(QUADRIC.truncatedCone(1, 0.001, 1));
@@ -79,19 +79,38 @@ CHARACTERS.PRT = function(E) {
        LIBS.scale(0.03, 0.03, 0.03)));
 
   var DEV_A = -0.55;
-  var DEVICE = node(HEAD, null, null, LIBS.chain(
-    LIBS.translate(-0.99 * Math.sin(DEV_A), -0.12, -0.99 * Math.cos(DEV_A)), LIBS.rotY(DEV_A)));
-  node(DEVICE, CYLINDER, DARKRED, LIBS.chain(LIBS.rotX(Math.PI / 2), LIBS.scale(0.3, 0.1, 0.3)));
-  node(DEVICE, CYLINDER, RED, LIBS.chain(LIBS.translate(0, 0, -0.04), LIBS.rotX(Math.PI / 2), LIBS.scale(0.25, 0.1, 0.25)));
-  node(DEVICE, CIRCLE, YELLOW, LIBS.chain(LIBS.translate(0, 0, -0.1), LIBS.rotX(-Math.PI / 2), LIBS.scale(0.07, 1, 0.07)));
+  var DEVM = LIBS.chain(LIBS.translate(-0.99 * Math.sin(DEV_A), -0.12, -0.99 * Math.cos(DEV_A)), LIBS.rotY(DEV_A));
+  var DEVICE = node(HEAD, null, null, DEVM);
+  // pelat segilima bersudut bulat: cakram tengah + silinder rebah di tiap sisi + bola pipih di tiap sudut
+  var pentagon = function(color, R, rc, z, depth) {
+    var c = [];
+    for (var k = 0; k < 5; k++) {
+      var a = -Math.PI / 2 + k * 2 * Math.PI / 5;
+      c.push([R * Math.cos(a), R * Math.sin(a), 0]);
+    }
+    var flat = LIBS.chain(LIBS.translate(0, 0, z), LIBS.scale(1, 1, depth));
+    node(DEVICE, CYLINDER, color, LIBS.chain(flat, LIBS.rotX(Math.PI / 2),
+         LIBS.scale(R * Math.cos(Math.PI / 5), 2 * rc, R * Math.cos(Math.PI / 5))));
+    for (var k = 0; k < 5; k++) {
+      node(DEVICE, CYLINDER, color, LIBS.chain(flat, LIBS.segment(c[k], c[(k + 1) % 5], rc)));
+      node(DEVICE, SPHERE, color, LIBS.chain(flat, LIBS.translate(c[k][0], c[k][1], 0), LIBS.scale(rc, rc, rc)));
+    }
+  };
+  pentagon(DARKRED, 0.27, 0.06, -0.06, 1);
+  pentagon(RED, 0.255, 0.055, -0.085, 0.75);
   for (var s = -1; s <= 1; s += 2) {
-    node(DEVICE, SPHERE, DARK, LIBS.chain(LIBS.translate(s * 0.3, 0.17, -0.02), LIBS.rotZ(s * 0.6), LIBS.scale(0.14, 0.05, 0.05)));
+    node(DEVICE, CYLINDER, DARK, LIBS.chain(LIBS.translate(s * 0.31, 0.12, 0), LIBS.rotZ(-s * 0.35), LIBS.scale(0.05, 0.3, 0.03)));
   }
+  node(DEVICE, CYLINDER, DARK, LIBS.chain(LIBS.translate(0.04, -0.3, -0.02), LIBS.rotZ(Math.PI / 2 + 0.15), LIBS.scale(0.04, 0.3, 0.03)));
+  node(DEVICE, CYLINDER, DARK, LIBS.chain(LIBS.translate(0, 0.17, -0.13), LIBS.scale(0.075, 0.24, 0.035)));
+  node(DEVICE, SPHERE, DARK, LIBS.chain(LIBS.translate(0, 0.29, -0.13), LIBS.scale(0.075, 0.03, 0.035)));
+  node(DEVICE, CYLINDER, DARK, LIBS.chain(LIBS.translate(0, 0.02, -0.135), LIBS.rotX(Math.PI / 2), LIBS.scale(0.1, 0.05, 0.1)));
+  node(DEVICE, CIRCLE, YELLOW, LIBS.chain(LIBS.translate(0, 0.02, -0.162), LIBS.rotX(-Math.PI / 2), LIBS.scale(0.065, 1, 0.065)));
 
   // Part: Kabel (kurva Bezier)
   var P0 = plugAt(1.28), P1 = [0.75, 2.3, -0.3], P2 = [1.55, 2.0, -0.8], P3 = [1.2, 1.25, -1.0];
   var P4 = [2 * P3[0] - P2[0], 2 * P3[1] - P2[1], 2 * P3[2] - P2[2]], P5 = [0.75, 0.45, -1.25];
-  var P6 = [-1.0 * Math.sin(DEV_A), 0.16, -1.0 * Math.cos(DEV_A)];
+  var P6 = LIBS.apply(DEVM, [0, 0.3, -0.13]);
   var cable = [];
   for (var i = 0; i <= 30; i++) cable.push(LIBS.bezier3(P0, P1, P2, P3, i / 30));
   for (var i = 1; i <= 30; i++) cable.push(LIBS.bezier3(P3, P4, P5, P6, i / 30));

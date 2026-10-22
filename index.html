@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
   <head>
     <meta charset='utf-8'/>
@@ -10,7 +10,7 @@
     <script src="L-T/lt.js"></script>
     <script>
       window.addEventListener('load', function() {
-        var E = ENGINE.create('your_canvas', { dist: 15, targetY: 1.2, theta: 0, phi: 0.3 });
+        var E = ENGINE.create('your_canvas', { dist: 17, targetY: 1.0, theta: 0, phi: 0.38 });
 
         var hex = function(h) { return [((h >> 16) & 255) / 255, ((h >> 8) & 255) / 255, (h & 255) / 255]; };
         var seed = 42;
@@ -27,8 +27,8 @@
         var CYL = E.geo.cyl('y');
         var CIRCLE = E.buffers(QUADRIC.circle(1));
 
-        // area tengah tempat karakter berjalan (dijaga bebas sampah besar)
-        var WALK_R = 6.5;
+        // area tempat karakter berjalan (gunungan sampah & gedung ada di luarnya)
+        var WALK_R = 11;
 
         function junk(p, geo, color, pos, scale, rot) {
           var m = new E.Obj(geo, color);
@@ -51,21 +51,58 @@
                [1 + rand() * 2.5, 1, 1 + rand() * 2.5], [0, rand() * 6, 0]);
         }
 
-        // Part: Sampah lepas (di luar area jalan)
+        // Part: Sampah di area jalan (dicatat sebagai rintangan: x, z, radius, tinggi)
+        var obstacles = [];
+        var freeSpot = function(r, rMin, rMax) {
+          for (var tries = 0; tries < 60; tries++) {
+            var p = polar(rMin + rand() * (rMax - rMin), rand() * Math.PI * 2);
+            var ok = obstacles.every(function(o) { return Math.hypot(p[0] - o.x, p[1] - o.z) > o.r + r + 0.6; });
+            if (ok) return p;
+          }
+          return null;
+        };
+        var addObstacle = function(p, r, h) { obstacles.push({ x: p[0], z: p[1], r: r, h: h }); };
+
+        // peti / balok besar
+        for (var i = 0; i < 10; i++) {
+          var w = 0.4 + rand() * 0.5, p = freeSpot(w, 4, WALK_R);
+          if (!p) continue;
+          junk(E.root, CYL, rand() < 0.5 ? pick(TRASH) : pick(RUST), [p[0], w * 0.5, p[1]], [w * 0.75, w, w * 0.75],
+               [0, rand() * 6, 0]);
+          addObstacle(p, w * 0.8, w);
+        }
+        // drum / tong berdiri
+        for (var i = 0; i < 8; i++) {
+          var p = freeSpot(0.35, 4, WALK_R);
+          if (!p) continue;
+          var col = pick(RUST);
+          junk(E.root, CYL, col, [p[0], 0.45, p[1]], [0.3, 0.9, 0.3]);
+          junk(E.root, CYL, pick(DULL), [p[0], 0.65, p[1]], [0.31, 0.06, 0.31]);
+          junk(E.root, CYL, pick(DULL), [p[0], 0.25, p[1]], [0.31, 0.06, 0.31]);
+          addObstacle(p, 0.35, 0.9);
+        }
+        // ban bekas rebah (cylinder pipih + lubang gelap)
+        for (var i = 0; i < 8; i++) {
+          var p = freeSpot(0.5, 4, WALK_R);
+          if (!p) continue;
+          junk(E.root, CYL, [0.16, 0.15, 0.15], [p[0], 0.1, p[1]], [0.5, 0.2, 0.5]);
+          junk(E.root, CIRCLE, [0.08, 0.07, 0.07], [p[0], 0.205, p[1]], [0.25, 1, 0.25]);
+          addObstacle(p, 0.5, 0.2);
+        }
+        // sampah kecil: kaleng, botol, bola kusam
         for (var i = 0; i < 40; i++) {
-          var p = polar(WALK_R + 2 + rand() * 7, rand() * Math.PI * 2);
+          var p = freeSpot(0.2, 4, WALK_R + 4);
+          if (!p) continue;
           var kind = rand();
           var col = kind < 0.5 ? pick(TRASH) : (kind < 0.75 ? pick(RUST) : pick(DULL));
-          if (kind < 0.45) {
-            var w = 0.12 + rand() * 0.3;
-            junk(E.root, CYL, col, [p[0], w * 0.4, p[1]], [w * 0.7, w, w * 0.7],
-                 [rand() * 0.4, rand() * 6, rand() * 0.4]);
-          } else if (kind < 0.75) {
-            junk(E.root, CYL, col, [p[0], 0.12, p[1]], [0.06 + rand() * 0.05, 0.24, 0.06 + rand() * 0.05],
-                 [rand() * 1.8, rand() * 6, rand() * 1.8]);
+          if (kind < 0.6) {
+            junk(E.root, CYL, col, [p[0], 0.1, p[1]], [0.07 + rand() * 0.05, 0.24, 0.07 + rand() * 0.05],
+                 [Math.PI / 2 * (rand() < 0.5 ? 1 : 0), rand() * 6, 0]);
+            addObstacle(p, 0.2, 0.25);
           } else {
-            var rr = 0.08 + rand() * 0.18;
+            var rr = 0.1 + rand() * 0.15;
             junk(E.root, SPHERE, col, [p[0], rr * 0.6, p[1]], [rr, rr * 0.6, rr], [0, rand() * 6, 0]);
+            addObstacle(p, rr, rr * 1.2);
           }
         }
 
@@ -97,62 +134,136 @@
           junk(E.root, SPHERE, [0.42, 0.38, 0.33], [p[0], h, p[1]], [w * 0.9, 0.5 + rand() * 0.6, w * 0.9]);
         }
 
-        // Part: Karakter + jalan-jalan
+        // Part: Karakter + jalan-jalan (menghindari sesama karakter & sampah)
+        // float: tinggi melayang (0 = di tanah). clear: sampah lebih pendek dari ini dilewati di atasnya.
         var walkers = [
-          { c: E.spawn(CHARACTERS.VNGO), y: 0,    r: 1.4, speed: 0.9, x: -3.2, z: 0,   heading: 0.5 },
-          { c: E.spawn(CHARACTERS.PRT),  y: 1.45, r: 2.0, speed: 0.7, x: 3.2,  z: 0.3, heading: -0.4 },
-          { c: E.spawn(CHARACTERS.LT),   y: 0,    r: 1.4, speed: 1.1, x: 0,    z: 2.8, heading: 2.6 }
+          { c: E.spawn(CHARACTERS.VNGO), y: 0,   float: 0,    clear: 0,   r: 1.4, speed: 0.9 },
+          { c: E.spawn(CHARACTERS.PRT),  y: 2.0, float: 0.12, clear: 0.6, r: 2.0, speed: 0.7 },
+          { c: E.spawn(CHARACTERS.LT),   y: 0.8, float: 0.1,  clear: 0.5, r: 1.3, speed: 1.1 }
         ];
-        var newTarget = function() {
-          var p = polar(WALK_R * Math.sqrt(rand()), rand() * Math.PI * 2);
-          return { x: p[0], z: p[1] };
+        // posisi awal terpisah 120 derajat di sekitar tengah (area tengah bebas sampah), menghadap ke luar
+        walkers.forEach(function(w, i) {
+          var a = Math.PI / 6 + i * 2 * Math.PI / 3;
+          w.x = 3.4 * Math.sin(a);
+          w.z = 3.4 * Math.cos(a);
+          w.heading = a;
+        });
+        var SHADOW = [0.36, 0.29, 0.21];
+        walkers.forEach(function(w, i) {
+          w.shadow = junk(E.root, CIRCLE, SHADOW, [w.x, 0.012 + i * 0.001, w.z], [1, 1, 1]);
+          w.phase = i * 2.1;
+        });
+
+        var solid = function(w) {
+          return obstacles.filter(function(o) { return o.h > w.clear; });
         };
-        walkers.forEach(function(w) { w.target = newTarget(); w.wait = rand() * 2; });
+        walkers.forEach(function(w) {
+          w.vx = 0;
+          w.vz = 0;
+          w.obs = solid(w);
+        });
+        var bodyR = function(w) { return w.r * 0.75; };
+
+        var newTarget = function(w) {
+          for (var tries = 0; tries < 60; tries++) {
+            var p = polar(WALK_R * Math.sqrt(rand()), rand() * Math.PI * 2);
+            if (Math.hypot(p[0] - w.x, p[1] - w.z) < 3) continue;
+            var free = w.obs.every(function(o) { return Math.hypot(p[0] - o.x, p[1] - o.z) > bodyR(w) + o.r + 0.5; });
+            if (free) return { x: p[0], z: p[1] };
+          }
+          return { x: -w.x * 0.5, z: -w.z * 0.5 };
+        };
+        walkers.forEach(function(w) {
+          w.target = newTarget(w);
+          w.wait = rand() * 1.5;
+          w.best = Infinity;
+          w.noProgress = 0;
+        });
 
         var wrap = function(a) { return Math.atan2(Math.sin(a), Math.cos(a)); };
-        var blocked = function(w, x, z) {
-          for (var i = 0; i < walkers.length; i++) {
-            var o = walkers[i];
-            if (o !== w && Math.hypot(x - o.x, z - o.z) < w.r + o.r) return true;
-          }
-          return false;
+
+        // dorong keluar kalau tumpang tindih (meluncur di tepi rintangan, tidak berhenti mendadak)
+        var resolve = function(w) {
+          var pushOut = function(ox, oz, minD, share) {
+            var dx = w.x - ox, dz = w.z - oz, d = Math.hypot(dx, dz);
+            if (d < minD && d > 1e-4) {
+              var k = (minD - d) * share;
+              w.x += dx / d * k;
+              w.z += dz / d * k;
+              var vn = (w.vx * dx + w.vz * dz) / d;
+              if (vn < 0) { w.vx -= vn * dx / d; w.vz -= vn * dz / d; }
+            }
+          };
+          w.obs.forEach(function(o) { pushOut(o.x, o.z, bodyR(w) + o.r, 1); });
+          walkers.forEach(function(o) { if (o !== w) pushOut(o.x, o.z, w.r + o.r, 0.5); });
+          var dc = Math.hypot(w.x, w.z);
+          if (dc > WALK_R + 1) { w.x *= (WALK_R + 1) / dc; w.z *= (WALK_R + 1) / dc; }
         };
 
         E.onFrame(function(t, dt) {
           walkers.forEach(function(w) {
+            var dx = w.target.x - w.x, dz = w.target.z - w.z, d = Math.hypot(dx, dz);
+
+            // kecepatan yang diinginkan: menuju tujuan, melambat saat dekat, berhenti saat menunggu
+            var want = w.wait > 0 ? 0 : w.speed * Math.min(1, d / 1.5);
+            var ax = d > 1e-4 ? dx / d * want : 0, az = d > 1e-4 ? dz / d * want : 0;
+
+            // menghindar: rintangan & karakter lain di depan/dekat memberi dorongan menyamping
+            var avoid = function(ox, oz, range, strength) {
+              var rx = w.x - ox, rz = w.z - oz, rd = Math.hypot(rx, rz);
+              if (rd < range && rd > 1e-4) {
+                var f = strength * (1 - rd / range);
+                ax += rx / rd * f;
+                az += rz / rd * f;
+              }
+            };
+            w.obs.forEach(function(o) { avoid(o.x, o.z, bodyR(w) + o.r + 1.0, w.speed * 1.2); });
+            walkers.forEach(function(o) { if (o !== w) avoid(o.x, o.z, w.r + o.r + 1.5, w.speed * 1.5); });
+
+            // kecepatan berubah perlahan (percepatan terbatas) -> gerak halus
+            var k = Math.min(1, dt * 2.0);
+            w.vx += (ax - w.vx) * k;
+            w.vz += (az - w.vz) * k;
+            var sp = Math.hypot(w.vx, w.vz);
+            if (sp > w.speed) { w.vx *= w.speed / sp; w.vz *= w.speed / sp; sp = w.speed; }
+
+            w.x += w.vx * dt;
+            w.z += w.vz * dt;
+            resolve(w);
+
+            // arah hadap mengikuti arah gerak, hanya saat benar-benar bergerak (tidak muter di tempat)
+            if (sp > 0.08) {
+              var turn = wrap(Math.atan2(w.vx, w.vz) - w.heading);
+              var maxTurn = 1.6 * dt;
+              w.heading += Math.max(-maxTurn, Math.min(maxTurn, turn * Math.min(1, dt * 3.0)));
+            }
+
+            // sampai tujuan -> berhenti sebentar; tidak ada kemajuan lama -> ganti tujuan
             if (w.wait > 0) {
               w.wait -= dt;
+            } else if (d < 0.5) {
+              w.wait = 1 + rand() * 2;
+              w.target = newTarget(w);
+              w.best = Infinity;
             } else {
-              var dx = w.target.x - w.x, dz = w.target.z - w.z, d = Math.hypot(dx, dz);
-              if (d < 0.3) {
-                w.target = newTarget();
-                w.wait = 0.5 + rand() * 2;
-              } else {
-                // arah ke tujuan + dorongan menjauhi karakter lain
-                var sx = dx / d, sz = dz / d;
-                walkers.forEach(function(o) {
-                  if (o === w) return;
-                  var ox = w.x - o.x, oz = w.z - o.z, od = Math.hypot(ox, oz);
-                  var near = w.r + o.r + 1.5;
-                  if (od < near) {
-                    sx += ox / od * (near - od);
-                    sz += oz / od * (near - od);
-                  }
-                });
-                var turn = wrap(Math.atan2(sx, sz) - w.heading);
-                w.heading += Math.max(-2 * dt, Math.min(2 * dt, turn));
-                var step = w.speed * dt * Math.max(0, Math.cos(turn));
-                var nx = w.x + Math.sin(w.heading) * step, nz = w.z + Math.cos(w.heading) * step;
-                if (Math.hypot(nx, nz) < WALK_R + 1 && !blocked(w, nx, nz)) {
-                  w.x = nx;
-                  w.z = nz;
-                } else {
-                  w.target = newTarget();
-                }
+              if (d < w.best - 0.05) { w.best = d; w.noProgress = 0; }
+              else w.noProgress += dt;
+              if (w.noProgress > 4) {
+                w.target = newTarget(w);
+                w.best = Infinity;
+                w.noProgress = 0;
               }
             }
-            w.c.holder.position = [w.x, w.y, w.z];
-            w.c.holder.rotation = [0, w.heading, 0];
+
+            // melayang: naik-turun pelan + condong ke depan sesuai kecepatan
+            var lean = sp / w.speed;
+            var y = w.y + (w.float ? w.float * Math.sin(t * 1.3 + w.phase) : 0);
+            w.c.holder.position = [w.x, y, w.z];
+            w.c.holder.rotation = [w.float ? 0.12 * lean : 0, w.heading, 0];
+            // bayangan di tanah: makin kecil saat makin tinggi
+            var sr = w.r * (w.float ? 0.75 - 0.1 * Math.sin(t * 1.3 + w.phase) : 0.8);
+            w.shadow.position = [w.x, w.shadow.position[1], w.z];
+            w.shadow.scale = [sr, 1, sr];
           });
         });
 

@@ -28,7 +28,7 @@ CHARACTERS.LT = function(E) {
   var CYAN    = [0.35, 0.85, 1.00];
   var CYAN_W  = [0.85, 0.98, 1.00];
 
-  var CYLINDER = E.buffers(QUADRIC.cylinder(1, 1));
+  var CYLINDER = E.geo.cyl('y');
   var SPHERE = E.geo.sphere();
   var CIRCLE = E.buffers(QUADRIC.circle(1));
 
@@ -111,7 +111,7 @@ CHARACTERS.LT = function(E) {
 
   // cangkang (truncated cone) + atap runcing memanjang ke belakang (ellipsoid)
   node(LAMP, E.buffers(QUADRIC.truncatedCone(0.42, 0.62, 0.8)), YEL, LIBS.rotX(PI / 2));
-  node(LAMP, SPHERE, YEL_L, LIBS.chain(LIBS.translate(0, 0.45, 0.28), LIBS.rotX(-0.08), LIBS.scale(0.3, 0.12, 0.75)));
+  node(LAMP, SPHERE, YEL_L, LIBS.chain(LIBS.translate(0, 0.5, 0.05), LIBS.rotX(-0.08), LIBS.scale(0.28, 0.12, 0.6)));
   // tutup belakang kuning + panel gelap bundar
   node(LAMP, E.buffers(QUADRIC.ellipsoid(0.42, 0.42, 0.18, 0, PI / 2)), YEL, LIBS.rotX(-PI / 2));
   node(LAMP, E.buffers(QUADRIC.ellipsoid(0.3, 0.3, 0.25, 0, PI / 2)), DARK, LIBS.rotX(-PI / 2));
@@ -120,7 +120,7 @@ CHARACTERS.LT = function(E) {
   node(LAMP, CYLINDER, DARK2, LIBS.chain(LIBS.translate(SOCK[0], SOCK[1], SOCK[2] - 0.015), LIBS.rotX(PI / 2), LIBS.scale(0.08, 0.1, 0.08)));
 
   // bibir hitam tebal: cincin depan + rusuk-rusuk putih seperti ban
-  node(LAMP, CYLINDER, DARK, LIBS.chain(LIBS.translate(0, 0, 0.8), LIBS.rotX(PI / 2), LIBS.scale(0.64, 0.16, 0.64)));
+  node(LAMP, E.geo.cyl('y', true), DARK, LIBS.chain(LIBS.translate(0, 0, 0.8), LIBS.rotX(PI / 2), LIBS.scale(0.64, 0.16, 0.64)));
   node(LAMP, E.buffers(QUADRIC.truncatedCone(0.64, 0.58, 0.002)), DARK, LIBS.chain(LIBS.translate(0, 0, 0.88), LIBS.rotX(PI / 2)));
   for (var k = 0; k < 40; k++) {
     var a = k * 2 * PI / 40;
